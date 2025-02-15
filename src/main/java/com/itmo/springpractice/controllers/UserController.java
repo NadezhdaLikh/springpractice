@@ -25,12 +25,7 @@ public class UserController {
         return userService.getAllUsers();
     }
 
-    @GetMapping
-    public UserInfoResp getUserByLastNameAndEmail(@RequestParam String lastName, @RequestParam String email) {
-        return userService.getUserByLastNameAndEmail(lastName, email);
-    }
-
-    @PostMapping("")
+    @PostMapping
     public UserInfoResp addUser(@RequestBody UserInfoReq userInfoReq) {
         return userService.addUser(userInfoReq);
     }

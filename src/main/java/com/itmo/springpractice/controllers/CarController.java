@@ -2,7 +2,7 @@ package com.itmo.springpractice.controllers;
 
 import com.itmo.springpractice.models.dtos.requests.CarInfoReq;
 import com.itmo.springpractice.models.dtos.responses.CarInfoResp;
-import com.itmo.springpractice.services.CarService;
+import com.itmo.springpractice.services.impls.CarService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
