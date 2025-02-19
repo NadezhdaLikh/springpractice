@@ -1,5 +1,6 @@
 package com.itmo.springpractice.models.database.entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.itmo.springpractice.models.enums.CarStatus;
 import com.itmo.springpractice.models.enums.CarType;
 import com.itmo.springpractice.models.enums.Color;
@@ -48,6 +49,8 @@ public class Car {
     @Enumerated(EnumType.STRING)
     CarStatus status;
 
-    /*@ManyToOne
-    User user;*/
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "driver_id")
+    @JsonBackReference
+    User user;
 }
