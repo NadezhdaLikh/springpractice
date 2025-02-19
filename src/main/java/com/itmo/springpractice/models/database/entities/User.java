@@ -1,5 +1,6 @@
 package com.itmo.springpractice.models.database.entities;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.itmo.springpractice.models.enums.Gender;
 import com.itmo.springpractice.models.enums.UserStatus;
 import lombok.AccessLevel;
@@ -11,6 +12,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -57,6 +59,8 @@ public class User {
     @Enumerated(EnumType.STRING)
     UserStatus status;
 
-    /*@OneToMany(fetch = FetchType.LAZY)
-    List<Car> cars;*/
+    // The owning side - Car entity (child), the inverse side - User entity (parent)
+    @OneToMany(mappedBy = "user")
+    @JsonManagedReference
+    List<Car> cars;
 }
