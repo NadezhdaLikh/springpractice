@@ -1,6 +1,7 @@
 package com.itmo.springpractice.services.impls;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.itmo.springpractice.exceptions.CustomBackendException;
 import com.itmo.springpractice.models.database.entities.User;
 import com.itmo.springpractice.models.database.repositories.UserRepository;
 import com.itmo.springpractice.models.dtos.requests.UserInfoReq;
@@ -10,10 +11,12 @@ import com.itmo.springpractice.services.UserService;
 import com.itmo.springpractice.utils.PaginationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -31,10 +34,9 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getUserFromDB(Long id) {
         Optional<User> optionalUser = userRepository.findById(id);
-        if (optionalUser.isEmpty()) {
-            log.error("From getUserFromDB(): sorry, user with id {} is not found.", id);
-        }
-        return optionalUser.orElse(new User());
+        final String errorMessage = String.format("Sorry, user with id %d is not found:(", id);
+
+        return optionalUser.orElseThrow(() -> new CustomBackendException(errorMessage, HttpStatus.NOT_FOUND));
     }
 
     @Override
@@ -69,6 +71,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserInfoResp addUser(UserInfoReq userInfoReq) {
+        if (!EmailValidator.getInstance().isValid(userInfoReq.getEmail())) {
+            throw new CustomBackendException("Email is invalid!", HttpStatus.BAD_REQUEST);
+        }
+
+        userRepository.findByEmail(userInfoReq.getEmail()).ifPresent(user -> {
+            final String errorMessage = String.format("User with email %s already exists!", userInfoReq.getEmail());
+            throw new CustomBackendException(errorMessage, HttpStatus.CONFLICT);
+        });
+
         User user = objectMapper.convertValue(userInfoReq, User.class);
         user.setStatus(UserStatus.ACTIVE);
 
@@ -78,9 +89,6 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserInfoResp updateUser(Long id, UserInfoReq userInfoReq) {
         User user = getUserFromDB(id);
-        if (user.getId() == null) {
-            return objectMapper.convertValue(user, UserInfoResp.class);
-        }
 
         user.setFirstName(userInfoReq.getFirstName() == null ? user.getFirstName() : userInfoReq.getFirstName());
         user.setMiddleName(userInfoReq.getMiddleName() == null ? user.getMiddleName() : userInfoReq.getMiddleName());
@@ -96,9 +104,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void deleteUser(Long id) {
         User user = getUserFromDB(id);
-        if (user.getId() == null) {
-            return;
-        }
+
         user.setStatus(UserStatus.DELETED);
         userRepository.save(user);
     }
@@ -106,5 +112,13 @@ public class UserServiceImpl implements UserService {
     @Override
     public User updateUserCars(User updatedUser) {
         return userRepository.save(updatedUser);
+    }
+
+    @Override
+    public void invalidateSession() {
+        // logic
+
+        String email = UserInfoReq.Fields.email;
+        String age = UserInfoReq.Fields.age;
     }
 }
