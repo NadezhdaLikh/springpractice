@@ -18,4 +18,6 @@ public interface UserService {
     User updateUserCars(User updatedUser);
 
     void deleteUser(Long id);
+
+    void invalidateSession();
 }

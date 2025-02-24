@@ -1,6 +1,7 @@
 package com.itmo.springpractice.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.itmo.springpractice.exceptions.CustomBackendException;
 import com.itmo.springpractice.models.database.entities.Car;
 import com.itmo.springpractice.models.database.entities.User;
 import com.itmo.springpractice.models.database.repositories.CarRepository;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -32,10 +34,9 @@ public class CarService {
 
     private Car getCarFromDB(Long id) {
         Optional<Car> optionalCar = carRepository.findById(id);
-        if (optionalCar.isEmpty()) {
-            log.error("From getCarFromDB(): sorry, car with id {} is not found.", id);
-        }
-        return optionalCar.orElse(new Car());
+        final String errorMessage = String.format("Car with id %d is not found:(", id);
+
+        return optionalCar.orElseThrow(() -> new CustomBackendException(errorMessage, HttpStatus.NOT_FOUND));
     }
 
     public CarInfoResp getCar(Long id) {
@@ -75,9 +76,6 @@ public class CarService {
 
     public CarInfoResp updateCar(Long id, CarInfoReq carInfoReq) {
         Car car = getCarFromDB(id);
-        if (car.getId() == null) {
-            return objectMapper.convertValue(null, CarInfoResp.class);
-        }
 
         car.setBrand(carInfoReq.getBrand() == null ? car.getBrand() : carInfoReq.getBrand());
         car.setModel(carInfoReq.getModel() == null ? car.getModel() : carInfoReq.getModel());
@@ -92,9 +90,7 @@ public class CarService {
 
     public void deleteCar(Long id) {
         Car car = getCarFromDB(id);
-        if (car.getId() == null) {
-            return;
-        }
+
         car.setStatus(CarStatus.DELETED);
         carRepository.save(car);
     }
@@ -103,15 +99,10 @@ public class CarService {
         Car car = getCarFromDB(carId);
         User user = userService.getUserFromDB(userId);
 
-        if (car.getId() == null || user.getId() == null) {
-            log.error("From linkCarToDriver(): sorry, can't link car with id {} to driver with id {}.", carId, userId);
-            return CarInfoResp.builder().build();
-        }
-
         // Check from car's perspective
         if (car.getStatus() == CarStatus.LINKED & car.getUser() != null) {
-            log.error("From linkCarToDriver(): sorry, car with id {} is already linked to some other driver with id {}.", carId, userId);
-            return CarInfoResp.builder().build();
+            final String errorMessage = String.format("Car with id %d is already linked to some other driver with id %d.", carId, userId);
+            throw new CustomBackendException(errorMessage, HttpStatus.CONFLICT);
         }
 
         // Check from user's perspective
@@ -119,13 +110,8 @@ public class CarService {
         boolean isLinked = userCars.stream().anyMatch(c -> c.getId().equals(carId));
 
         if (isLinked) {
-            log.error("From linkCarToDriver(): car with id {} is already linked to driver with id {}.", carId, userId);
-
-            CarInfoResp carInfoResp = objectMapper.convertValue(car, CarInfoResp.class);
-            UserInfoResp userInfoResp = objectMapper.convertValue(user, UserInfoResp.class);
-            carInfoResp.setUser(userInfoResp);
-
-            return carInfoResp;
+            final String errorMessage = String.format("Car with id %d is already linked to driver with id %d.", carId, userId);
+            throw new CustomBackendException(errorMessage, HttpStatus.CONFLICT);
         }
 
         userCars.add(car);
@@ -144,10 +130,7 @@ public class CarService {
 
     public List<CarInfoResp> getAllCarsByDriverId(Long userId) {
         User user = userService.getUserFromDB(userId);
-        if (user.getId() == null) {
-            log.error("From getCarsByDriverId(): sorry, user with id {} is not found.", userId);
-            return List.of();
-        }
+
         return carRepository.getAllCarsByUserId(userId).stream()
                 .map(car -> objectMapper.convertValue(car, CarInfoResp.class))
                 .collect(Collectors.toList());
